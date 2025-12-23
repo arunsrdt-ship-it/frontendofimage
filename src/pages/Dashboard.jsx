@@ -40,50 +40,70 @@ const Dashboard = () => {
     if (file) startUpload(file);
   };
 
-  const startUpload = async (file) => {
-    setUploadQueue({
-      active: true,
-      file: file,
-      progress: 0,
-      timeLeft: "Calculating...",
-      completed: false
+ const startUpload = async (file) => {
+  const isVideo = file.type.startsWith("video/");
+  const mediaType = isVideo ? "video" : "image";
+
+  setUploadQueue({
+    active: true,
+    file,
+    progress: 0,
+    timeLeft: "Calculating...",
+    completed: false,
+    mediaType,
+  });
+
+  const formData = new FormData();
+  formData.append(mediaType, file);
+
+  const endpoint = isVideo
+    ? "/videos/upload"
+    : "/images/upload";
+
+  startTimeRef.current = Date.now();
+
+  try {
+    await API.post(endpoint, formData, {
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        );
+
+        const timeElapsed = (Date.now() - startTimeRef.current) / 1000;
+        const uploadSpeed = progressEvent.loaded / timeElapsed;
+        const remainingBytes = progressEvent.total - progressEvent.loaded;
+        const secondsLeft = remainingBytes / uploadSpeed;
+
+        setUploadQueue((prev) => ({
+          ...prev,
+          progress: percentCompleted,
+          timeLeft:
+            percentCompleted === 100
+              ? "Processing..."
+              : `${Math.ceil(secondsLeft)}s remaining`,
+        }));
+      },
     });
 
-    const formData = new FormData();
-    formData.append("image", file);
-    
-    startTimeRef.current = Date.now();
+    setUploadQueue((prev) => ({
+      ...prev,
+      progress: 100,
+      completed: true,
+      timeLeft: "Complete",
+    }));
 
-    try {
-      await API.post("/images/upload", formData, {
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          
-          const timeElapsed = (Date.now() - startTimeRef.current) / 1000;
-          const uploadSpeed = progressEvent.loaded / timeElapsed;
-          const remainingBytes = progressEvent.total - progressEvent.loaded;
-          const secondsLeft = remainingBytes / uploadSpeed;
-          
-          setUploadQueue(prev => ({
-            ...prev,
-            progress: percentCompleted,
-            timeLeft: percentCompleted === 100 ? "Processing..." : `${Math.ceil(secondsLeft)}s remaining`
-          }));
-        },
-      });
+    fetchImages(); // later you’ll also fetch videos
 
-      setUploadQueue(prev => ({ ...prev, progress: 100, completed: true, timeLeft: "Complete" }));
-      fetchImages();
-      
-      setTimeout(() => {
-        setUploadQueue(prev => ({ ...prev, active: false }));
-      }, 3000);
+    setTimeout(() => {
+      setUploadQueue((prev) => ({ ...prev, active: false }));
+    }, 3000);
 
-    } catch (err) {
-      console.error("Upload failed", err);
-      setUploadQueue(prev => ({ ...prev, active: false }));
-    }
-  };
+  } catch (err) {
+    console.error("Upload failed", err);
+    setUploadQueue((prev) => ({ ...prev, active: false }));
+  }
+};
+
 
   const onDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
   const onDragLeave = () => setIsDragging(false);
