@@ -1,14 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  UploadCloud,
-  Plus,
-  X,
-  FileImage,
-  Loader2,
-  Clock,
-  CheckCircle2,
-} from "lucide-react";
+import { UploadCloud, Plus, X, FileImage, Loader2, Clock, CheckCircle2 } from "lucide-react";
 import API from "../services/api";
 import ImageCard from "../components/ImageCard";
 import VideoCard from "../components/VideoCard";
@@ -91,10 +83,7 @@ const Dashboard = () => {
           setUploadQueue((prev) => ({
             ...prev,
             progress: percent,
-            timeLeft:
-              percent === 100
-                ? "Processing..."
-                : `${Math.ceil(seconds)}s remaining`,
+            timeLeft: percent === 100 ? "Processing..." : `${Math.ceil(seconds)}s remaining`,
           }));
         },
       });
@@ -135,38 +124,20 @@ const Dashboard = () => {
 
   /* ---------------- MERGE MEDIA ---------------- */
 
-  const media = [
-    ...images.map((img) => ({ ...img, type: "image" })),
-    ...videos.map((vid) => ({ ...vid, type: "video" })),
-  ];
+  const media = [...images.map((img) => ({ ...img, type: "image" })), ...videos.map((vid) => ({ ...vid, type: "video" }))];
 
   /* ---------------- UI ---------------- */
 
   return (
-    <div
-      className="min-h-screen bg-[#FBFBFD] pt-28 px-6 pb-6 md:pt-36 md:px-12 md:pb-12"
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-    >
+    <div className="min-h-screen bg-[#FBFBFD] pt-28 px-6 pb-6 md:pt-36 md:px-12 md:pb-12" onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
       {/* Header */}
       <div className="max-w-7xl mx-auto flex justify-between items-end mb-12">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900">
-            Library
-          </h1>
-          <p className="text-gray-500 mt-2">
-            Manage your collection across all devices.
-          </p>
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900">Library</h1>
+          <p className="text-gray-500 mt-2">Manage your collection across all devices.</p>
         </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          accept="image/*,video/*"
-          onChange={handleFileSelect}
-        />
+        <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" onChange={handleFileSelect} />
 
         <button
           onClick={() => fileInputRef.current.click()}
@@ -188,9 +159,7 @@ const Dashboard = () => {
           >
             <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center animate-bounce">
               <UploadCloud size={48} className="text-blue-600 mb-2" />
-              <p className="text-lg font-bold text-gray-700">
-                Drop to upload
-              </p>
+              <p className="text-lg font-bold text-gray-700">Drop to upload</p>
             </div>
           </motion.div>
         )}
@@ -203,29 +172,14 @@ const Dashboard = () => {
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
               <FileImage className="text-gray-400" size={32} />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900">
-              No media yet
-            </h3>
-            <p className="text-gray-500 mt-2 max-w-sm">
-              Upload your first photo or video to start building your secure
-              library.
-            </p>
+            <h3 className="text-xl font-semibold text-gray-900">No media yet</h3>
+            <p className="text-gray-500 mt-2 max-w-sm">Upload your first photo or video to start building your secure library.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {media.map((item) => (
-              <motion.div
-                key={item.publicId || item._id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                {item.type === "image" ? (
-                  <ImageCard img={item} refresh={fetchImages} />
-                ) : (
-                  <VideoCard video={item} />
-                )}
+              <motion.div key={item.publicId || item._id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
+                {item.type === "image" ? <ImageCard img={item} refresh={fetchImages} /> : <VideoCard video={item} refresh={fetchVideos} />}
               </motion.div>
             ))}
           </div>
@@ -245,14 +199,8 @@ const Dashboard = () => {
             <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4">
               <div className="flex justify-between mb-2">
                 <span className="text-sm font-semibold flex items-center gap-2">
-                  {uploadQueue.completed ? (
-                    <CheckCircle2 size={16} className="text-green-500" />
-                  ) : (
-                    <Loader2 size={16} className="text-blue-500 animate-spin" />
-                  )}
-                  {uploadQueue.completed
-                    ? "Upload Complete"
-                    : "Uploading media"}
+                  {uploadQueue.completed ? <CheckCircle2 size={16} className="text-green-500" /> : <Loader2 size={16} className="text-blue-500 animate-spin" />}
+                  {uploadQueue.completed ? "Upload Complete" : "Uploading media"}
                 </span>
                 <button onClick={() => setUploadQueue({ ...uploadQueue, active: false })}>
                   <X size={16} />
@@ -260,14 +208,7 @@ const Dashboard = () => {
               </div>
 
               <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <motion.div
-                  className={`h-full ${
-                    uploadQueue.completed
-                      ? "bg-green-500"
-                      : "bg-blue-600"
-                  }`}
-                  animate={{ width: `${uploadQueue.progress}%` }}
-                />
+                <motion.div className={`h-full ${uploadQueue.completed ? "bg-green-500" : "bg-blue-600"}`} animate={{ width: `${uploadQueue.progress}%` }} />
               </div>
             </div>
           </motion.div>
