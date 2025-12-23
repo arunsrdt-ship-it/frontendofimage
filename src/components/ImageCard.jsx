@@ -11,7 +11,7 @@ const ImageCard = ({ img, refresh }) => {
       <img src={img.imageUrl} className="w-full h-60 object-cover" />
       <button
         onClick={deleteImage}
-        className="w-full py-2 bg-red-500 text-white hover:bg-red-600"
+        className="w-full py-2 bg-red-500 text-white cursor-pointer hover:bg-red-600"
       >
         Delete
       </button>
