@@ -1,18 +1,30 @@
-import { motion } from "framer-motion";
+import API from "../services/api";
 
-const VideoCard = ({ video }) => {
+const VideoCard = ({ video, refresh }) => {
+  const deleteVideo = async () => {
+    try {
+      await API.delete(`/videos/${video.publicId}`);
+      refresh();
+    } catch (err) {
+      console.error("Failed to delete video", err);
+    }
+  };
+
   return (
-    <motion.div
-      layout
-      className="bg-white rounded-2xl overflow-hidden shadow hover:shadow-xl transition-shadow"
-    >
+    <div className="bg-white shadow rounded-lg overflow-hidden">
       <video
         src={video.videoUrl}
         controls
         preload="metadata"
         className="w-full h-60 object-cover bg-black"
       />
-    </motion.div>
+      <button
+        onClick={deleteVideo}
+        className="w-full py-2 bg-red-500 text-white hover:bg-red-600"
+      >
+        Delete
+      </button>
+    </div>
   );
 };
 
