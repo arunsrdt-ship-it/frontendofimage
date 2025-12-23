@@ -1,14 +1,23 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, Plus, X, FileImage, Loader2, Clock, CheckCircle2 } from "lucide-react";
+import {
+  UploadCloud,
+  Plus,
+  X,
+  FileImage,
+  Loader2,
+  Clock,
+  CheckCircle2,
+} from "lucide-react";
 import API from "../services/api";
 import ImageCard from "../components/ImageCard";
+import VideoCard from "../components/VideoCard";
 
 const Dashboard = () => {
   const [images, setImages] = useState([]);
+  const [videos, setVideos] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Upload State
   const [uploadQueue, setUploadQueue] = useState({
     active: false,
     file: null,
@@ -20,20 +29,32 @@ const Dashboard = () => {
   const fileInputRef = useRef(null);
   const startTimeRef = useRef(null);
 
+  /* ---------------- FETCH MEDIA ---------------- */
+
   const fetchImages = async () => {
     try {
       const res = await API.get("/images");
       setImages(res.data);
-    } catch (err) {
+    } catch {
       console.error("Failed to load images");
+    }
+  };
+
+  const fetchVideos = async () => {
+    try {
+      const res = await API.get("/videos");
+      setVideos(res.data);
+    } catch {
+      console.error("Failed to load videos");
     }
   };
 
   useEffect(() => {
     fetchImages();
+    fetchVideos();
   }, []);
 
-  // --- Upload Logic with Progress Calculation ---
+  /* ---------------- UPLOAD ---------------- */
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -43,6 +64,7 @@ const Dashboard = () => {
   const startUpload = async (file) => {
     const isVideo = file.type.startsWith("video/");
     const mediaType = isVideo ? "video" : "image";
+    const endpoint = isVideo ? "/videos/upload" : "/images/upload";
 
     setUploadQueue({
       active: true,
@@ -50,30 +72,29 @@ const Dashboard = () => {
       progress: 0,
       timeLeft: "Calculating...",
       completed: false,
-      mediaType,
     });
 
     const formData = new FormData();
     formData.append(mediaType, file);
 
-    const endpoint = isVideo ? "/videos/upload" : "/images/upload";
-
     startTimeRef.current = Date.now();
 
     try {
       await API.post(endpoint, formData, {
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-
-          const timeElapsed = (Date.now() - startTimeRef.current) / 1000;
-          const uploadSpeed = progressEvent.loaded / timeElapsed;
-          const remainingBytes = progressEvent.total - progressEvent.loaded;
-          const secondsLeft = remainingBytes / uploadSpeed;
+        onUploadProgress: (e) => {
+          const percent = Math.round((e.loaded * 100) / e.total);
+          const elapsed = (Date.now() - startTimeRef.current) / 1000;
+          const speed = e.loaded / elapsed;
+          const remaining = e.total - e.loaded;
+          const seconds = remaining / speed;
 
           setUploadQueue((prev) => ({
             ...prev,
-            progress: percentCompleted,
-            timeLeft: percentCompleted === 100 ? "Processing..." : `${Math.ceil(secondsLeft)}s remaining`,
+            progress: percent,
+            timeLeft:
+              percent === 100
+                ? "Processing..."
+                : `${Math.ceil(seconds)}s remaining`,
           }));
         },
       });
@@ -85,7 +106,8 @@ const Dashboard = () => {
         timeLeft: "Complete",
       }));
 
-      fetchImages(); // later you’ll also fetch videos
+      fetchImages();
+      fetchVideos();
 
       setTimeout(() => {
         setUploadQueue((prev) => ({ ...prev, active: false }));
@@ -96,6 +118,8 @@ const Dashboard = () => {
     }
   };
 
+  /* ---------------- DRAG & DROP ---------------- */
+
   const onDragOver = (e) => {
     e.preventDefault();
     setIsDragging(true);
@@ -104,27 +128,45 @@ const Dashboard = () => {
   const onDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    if (e.dataTransfer.files?.[0]) {
       startUpload(e.dataTransfer.files[0]);
     }
   };
 
+  /* ---------------- MERGE MEDIA ---------------- */
+
+  const media = [
+    ...images.map((img) => ({ ...img, type: "image" })),
+    ...videos.map((vid) => ({ ...vid, type: "video" })),
+  ];
+
+  /* ---------------- UI ---------------- */
+
   return (
     <div
-      // UPDATED: Changed padding to pt-28 (mobile) and pt-36 (desktop) to clear the navbar
       className="min-h-screen bg-[#FBFBFD] pt-28 px-6 pb-6 md:pt-36 md:px-12 md:pb-12"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      {/* Header Section */}
+      {/* Header */}
       <div className="max-w-7xl mx-auto flex justify-between items-end mb-12">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900">Library</h1>
-          <p className="text-gray-500 mt-2">Manage your collection across all devices.</p>
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900">
+            Library
+          </h1>
+          <p className="text-gray-500 mt-2">
+            Manage your collection across all devices.
+          </p>
         </div>
 
-        <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,video/*" />
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/*,video/*"
+          onChange={handleFileSelect}
+        />
 
         <button
           onClick={() => fileInputRef.current.click()}
@@ -135,7 +177,7 @@ const Dashboard = () => {
         </button>
       </div>
 
-      {/* Drag & Drop Overlay */}
+      {/* Drag Overlay */}
       <AnimatePresence>
         {isDragging && (
           <motion.div
@@ -146,34 +188,51 @@ const Dashboard = () => {
           >
             <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center animate-bounce">
               <UploadCloud size={48} className="text-blue-600 mb-2" />
-              <p className="text-lg font-bold text-gray-700">Drop to upload</p>
+              <p className="text-lg font-bold text-gray-700">
+                Drop to upload
+              </p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Grid Content */}
+      {/* Grid */}
       <div className="max-w-7xl mx-auto">
-        {images.length === 0 ? (
+        {media.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-gray-200 rounded-3xl">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
               <FileImage className="text-gray-400" size={32} />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900">No photos yet</h3>
-            <p className="text-gray-500 mt-2 max-w-sm">Upload your first photo or video to start building your secure library.</p>
+            <h3 className="text-xl font-semibold text-gray-900">
+              No media yet
+            </h3>
+            <p className="text-gray-500 mt-2 max-w-sm">
+              Upload your first photo or video to start building your secure
+              library.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {images.map((img) => (
-              <motion.div key={img._id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
-                <ImageCard img={img} refresh={fetchImages} />
+            {media.map((item) => (
+              <motion.div
+                key={item.publicId || item._id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {item.type === "image" ? (
+                  <ImageCard img={item} refresh={fetchImages} />
+                ) : (
+                  <VideoCard video={item} />
+                )}
               </motion.div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Upload Progress Toast */}
+      {/* Upload Toast (unchanged) */}
       <AnimatePresence>
         {uploadQueue.active && (
           <motion.div
@@ -183,36 +242,31 @@ const Dashboard = () => {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="fixed bottom-6 right-6 z-40 w-full max-w-sm"
           >
-            <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 overflow-hidden relative">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                  {uploadQueue.completed ? <CheckCircle2 size={16} className="text-green-500" /> : <Loader2 size={16} className="text-blue-500 animate-spin" />}
-                  {uploadQueue.completed ? "Upload Complete" : "Uploading 1 item..."}
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4">
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-semibold flex items-center gap-2">
+                  {uploadQueue.completed ? (
+                    <CheckCircle2 size={16} className="text-green-500" />
+                  ) : (
+                    <Loader2 size={16} className="text-blue-500 animate-spin" />
+                  )}
+                  {uploadQueue.completed
+                    ? "Upload Complete"
+                    : "Uploading media"}
                 </span>
-                <button onClick={() => setUploadQueue((prev) => ({ ...prev, active: false }))} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <button onClick={() => setUploadQueue({ ...uploadQueue, active: false })}>
                   <X size={16} />
                 </button>
               </div>
 
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
-                  <FileImage size={20} className="text-gray-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{uploadQueue.file?.name}</p>
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    {!uploadQueue.completed && <Clock size={10} />}
-                    {uploadQueue.timeLeft}
-                  </p>
-                </div>
-              </div>
-
-              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <motion.div
-                  className={`h-full rounded-full ${uploadQueue.completed ? "bg-green-500" : "bg-blue-600"}`}
-                  initial={{ width: 0 }}
+                  className={`h-full ${
+                    uploadQueue.completed
+                      ? "bg-green-500"
+                      : "bg-blue-600"
+                  }`}
                   animate={{ width: `${uploadQueue.progress}%` }}
-                  transition={{ ease: "easeOut" }}
                 />
               </div>
             </div>
